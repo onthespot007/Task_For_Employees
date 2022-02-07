@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="VcsDirectoryMappings">
+    <mapping directory="$PROJECT_DIR$" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/Driver_side/project" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/User" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/User/project" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/new/kk" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/new/project" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/startup" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/startup/project" vcs="Git" />
+  </component>
+</project>

@@ -1,142 +1,217 @@
-import React from "react";
-import {
-  StyleSheet,
-  View,
-  Platform,
-  Dimensions,
-  SafeAreaView
-} from "react-native";
-import MapView, { Marker, AnimatedRegion } from "react-native-maps";
-import PubNubReact from "pubnub-react";
+import React, {useState, useEffect} from 'react';
+import {View, Text, Dimensions, Pressable} from 'react-native';
+import MapView, {PROVIDER_GOOGLE, Marker} from 'react-native-maps';
+import MapViewDirections from 'react-native-maps-directions';
+import Entypo from 'react-native-vector-icons/Entypo';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import FontAwesome from 'react-native-vector-icons/FontAwesome';
+import styles from './styles';
+import NewOrderPopup from '../src/component/NewOrderPickup';
+const GOOGLE_MAPS_APIKEY = 'AIzaSyAz7DsC7BD6aflaqt06jLrUg4pM9ccDxCs';
 
-const { width, height } = Dimensions.get("window");
+const HomeScreen = () => {
+  const [isOnline, setIsOnline] = useState(false);
+  const [myPosition, setMyPosition] = useState(null);
+  const [order, setOrder] = useState(null);
+  const [newOrder, setNewOrder] = useState({
+    id: '1',
 
-const ASPECT_RATIO = width / height;
-const LATITUDE = 37.78825;
-const LONGITUDE = -122.4324;
-const LATITUDE_DELTA = 0.0922;
-const LONGITUDE_DELTA = LATITUDE_DELTA * ASPECT_RATIO;
+    type: 'Thela',
 
-export default class HomeScreen extends React.Component {
-  constructor(props) {
-    super(props);
+    originLatitude: 26.86076238103454,
+    originLongitude: 80.88032449671913,
 
-    this.state = {
-      latitude: LATITUDE,
-      longitude: LONGITUDE,
-      coordinate: new AnimatedRegion({
-        latitude: LATITUDE,
-        longitude: LONGITUDE,
-        latitudeDelta: 0,
-        longitudeDelta: 0
-      })
-    };
+    destLatitude: 26.86076238103454,
+    destLongitude: 80.88032449671913,
 
-    this.pubnub = new PubNubReact({
-      publishKey: "pub-c-ec66a9f9-f6a1-420b-afba-a431a6002b13",
-      subscribeKey: "sub-c-b59bb742-7cbd-11ec-ae36-726521e9de9f"
-    });
-    this.pubnub.init(this);
-  }
-
-  componentDidMount() {
-    this.watchLocation();
-  }
-
-  componentDidUpdate(prevProps, prevState) {
-    if (this.props.latitude !== prevState.latitude) {
-      this.pubnub.publish({
-        message: {
-          latitude: this.state.latitude,
-          longitude: this.state.longitude
-        },
-        channel: "location"
+    user: {
+      rating: 4.8,
+      name: 'Ufaq',
+    },
+  });
+  const onDecline = () => {
+    setNewOrder(null);
+  };
+  const onAccept = newOrder => {
+    setOrder(newOrder);
+    setNewOrder(null);
+  };
+  const onGoPress = () => {
+    setIsOnline(!isOnline);
+  };
+  const onUserLocationChange = event => {
+    console.log('userLocationChange');
+    setMyPosition(event.nativeEvent.coordinate);
+  };
+  const onDirectionFound = event => {
+    console.log('Direction found : ', event);
+    if (order) {
+      setOrder({
+        ...order,
+        distance: event.distance,
+        duration: event.duration,
+        pickedUp: order.pickedUp || event.distance < 0.2,
+        isFinished: order.pickedUp && event.distance < 0.2,
       });
     }
-  }
-
-  componentWillUnmount() {
-    navigator.geolocation.clearWatch(this.watchID);
-  }
-
-  watchLocation = () => {
-    const { coordinate } = this.state;
-
-    this.watchID = navigator.geolocation.watchPosition(
-      position => {
-        const { latitude, longitude } = position.coords;
-
-        const newCoordinate = {
-          latitude,
-          longitude
-        };
-
-        if (Platform.OS === "android") {
-          if (this.marker) {
-            this.marker._component.animateMarkerToCoordinate(
-              newCoordinate,
-              500 // 500 is the duration to animate the marker
-            );
-          }
-        } else {
-          coordinate.timing(newCoordinate).start();
-        }
-
-        this.setState({
-          latitude,
-          longitude
-        });
-      },
-      error => console.log(error),
-      {
-        enableHighAccuracy: true,
-        timeout: 20000,
-        maximumAge: 1000,
-        distanceFilter: 10
-      }
-    );
+  };
+  const getDestination = () => {
+    if (order && order.pickedUp) {
+      return {
+        latitude: order.destLatitude,
+        longitude: order.destLongitude,
+      };
+    }
+    return {
+      latitude: order.originLatitude,
+      longitude: order.originLongitude,
+    };
   };
 
-  getMapRegion = () => ({
-    latitude: this.state.latitude,
-    longitude: this.state.longitude,
-    latitudeDelta: LATITUDE_DELTA,
-    longitudeDelta: LONGITUDE_DELTA
-  });
-
-  render() {
-    return (
-      <SafeAreaView style={{ flex: 1 }}>
-        <View style={styles.container}>
-          <MapView
-            style={styles.map}
-            showUserLocation
-            followUserLocation
-            loadingEnabled
-            region={this.getMapRegion()}
-          >
-            <Marker.Animated
-              ref={marker => {
-                this.marker = marker;
-              }}
-              coordinate={this.state.coordinate}
-            />
-          </MapView>
+  const renderBottomTitle = () => {
+    if (order && order.isFinished) {
+      return (
+        <View style={{alignItems: 'center'}}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: '#cb0e0e',
+              width: 200,
+              padding: 10,
+            }}>
+            <Text style={{color: 'white', fontWeight: 'bold'}}>
+              COMPLETE {order.type}
+            </Text>
+          </View>
+          <Text style={styles.bottomText}> {order.user.name} </Text>
         </View>
-      </SafeAreaView>
-    );
-  }
-}
+      );
+    }
+    if (order && order.pickedUp) {
+      return (
+        <View style={{alignItems: 'center'}}>
+          <View style={{flexDirection: 'row', alignItems: 'center'}}>
+            <Text>{order.duration ? order.duration.toFixed(1) : '?'} min</Text>
+            <View
+              style={{
+                backgroundColor: '#ff0000',
+                marginHorizontal: 10,
+                width: 30,
+                height: 30,
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: 20,
+              }}>
+              <FontAwesome name={'user'} color={'white'} size={20} />
+            </View>
+            <Text>{order.distance ? order.distance.toFixed(1) : '?'} Km</Text>
+          </View>
+          <Text style={styles.bottomText}>Dropping Off {order.user.name} </Text>
+        </View>
+      );
+    }
+    if (order) {
+      return (
+        <View style={{alignItems: 'center'}}>
+          <View style={{flexDirection: 'row', alignItems: 'center'}}>
+            <Text>{order.duration ? order.duration.toFixed(1) : '?'} min</Text>
+            <View
+              style={{
+                backgroundColor: '#48d42a',
+                marginHorizontal: 10,
+                width: 30,
+                height: 30,
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: 20,
+              }}>
+              <FontAwesome name={'user'} color={'white'} size={20} />
+            </View>
+            <Text>{order.distance ? order.distance.toFixed(1) : '?'} Km</Text>
+          </View>
+          <Text style={styles.bottomText}>
+            Picking the Order from {order.user.name}{' '}
+          </Text>
+        </View>
+      );
+    }
+    if (isOnline) {
+      return <Text style={styles.bottomText}>You are online </Text>;
+    }
+    return <Text style={styles.bottomText}>You are offline </Text>;
+  };
 
-const styles = StyleSheet.create({
-  container: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: "flex-end",
-    alignItems: "center"
-  },
-  map: {
-    ...StyleSheet.absoluteFillObject,
-    width : '100%' | width ,
-    height : '100%' | height,
-  }
-});
+  return (
+    <View>
+      <MapView
+        style={{width: '100%', height: Dimensions.get('window').height - 100}}
+        provider={PROVIDER_GOOGLE}
+        showsUserLocation={true}
+        onUserLocationChange={onUserLocationChange}
+        initialRegion={{
+          latitude: 26.86763,
+          longitude: 80.880577,
+          latitudeDelta: 0.0922,
+          longitudeDelta: 0.0421,
+        }}>
+        {order && (
+          <MapViewDirections
+            origin={myPosition}
+            onReady={onDirectionFound}
+            destination={getDestination()}
+            apikey={GOOGLE_MAPS_APIKEY}
+            strokeWidth={6}
+            strokeColor={'#4f990b'}
+          />
+        )}
+      </MapView>
+      <Pressable
+        onPress={() => console.warn("Heyy don't touch it yaaar")}
+        style={[styles.roundButton, {top: 10, left: 10}]}>
+        <Entypo name={'menu'} size={24} color="#4a4a4a" />
+      </Pressable>
+      <Pressable
+        onPress={() => console.warn("Heyy don't touch it yaaar")}
+        style={[styles.roundButton, {top: 10, right: 10}]}>
+        <FontAwesome name={'search'} size={24} color="#4a4a4a" />
+      </Pressable>
+      <Pressable onPress={onGoPress} style={styles.goButton}>
+        <Text style={styles.goText}>{isOnline ? 'END' : 'GO'}</Text>
+      </Pressable>
+      <Pressable
+        onPress={() => console.warn('Balance')}
+        style={styles.balanceButton}>
+        <Text style={styles.balanceText}>
+          <Text style={{color: 'green'}}> ₹</Text> 0.00
+        </Text>
+      </Pressable>
+      <Pressable
+        onPress={() => console.warn("Heyy don't touch it yaaar")}
+        style={[styles.roundButton, {bottom: 110, left: 10}]}>
+        <Entypo name={'menu'} size={24} color="#4a4a4a" />
+      </Pressable>
+      <Pressable
+        onPress={() => console.warn("Heyy don't touch it yaaar")}
+        style={[styles.roundButton, {bottom: 110, right: 10}]}>
+        <Entypo name={'menu'} size={24} color="#4a4a4a" />
+      </Pressable>
+      <View style={styles.bottomContainer}>
+        <Ionicons name={'options'} size={30} color="#4a4a4a" />
+        {renderBottomTitle()}
+        <Entypo name={'menu'} size={30} color="#4a4a4a" />
+      </View>
+      {newOrder && (
+        <NewOrderPopup
+          newOrder={newOrder}
+          duration={2}
+          distance={0.5}
+          onDecline={onDecline}
+          onAccept={() => onAccept(newOrder)}
+        />
+      )}
+    </View>
+  );
+};
+export default HomeScreen;

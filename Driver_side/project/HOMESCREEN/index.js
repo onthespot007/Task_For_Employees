@@ -26,7 +26,7 @@ const HomeScreen = () => {
 
     user: {
       rating: 4.8,
-      name: 'Ufaq',
+      name: 'xxyy',
     },
   });
   const onDecline = () => {
